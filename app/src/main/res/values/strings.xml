@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">ScribbleDash</string>
+
+    <!-- region Home Screen -->
+    <string name="start_drawing">Start drawing!</string>
+    <string name="select_game_mode">Select game mode</string>
+
+    <string name="one_round_wonder">One round wonder</string>
+    <!-- endregion -->
+
+    <!-- region Difficulties -->
+    <string name="difficulty_beginner">Beginner</string>
+    <string name="difficulty_challenging">Challenging</string>
+    <string name="difficulty_master">Master</string>
+    <!-- endregion -->
+
+    <!-- region Time to draw -->
+    <string name="time_to_draw">Time to draw!</string>
+    <!-- endregion -->
+</resources>
