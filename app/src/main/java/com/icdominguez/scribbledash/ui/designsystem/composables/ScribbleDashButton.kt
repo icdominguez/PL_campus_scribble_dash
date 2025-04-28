@@ -21,13 +21,14 @@ import com.icdominguez.scribbledash.ui.designsystem.theme.LocalScribbleDashTypog
 
 @Composable
 fun ScribbleDashButton(
+    modifier: Modifier = Modifier,
     isEnabled: Boolean = false,
     onClick: () -> Unit,
     color: Color = LocalScribbleDashColorsPalette.current.primary,
     text: String
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(
                 shape = RoundedCornerShape(20.dp),

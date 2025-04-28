@@ -2,10 +2,17 @@ package com.icdominguez.scribbledash.ui.screens.drawing
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.icdominguez.scribbledash.domain.GetRandomAssetUseCase
+import com.icdominguez.scribbledash.model.PathCommand
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 private val MAX_BUFFER_SIZE = 5
 
@@ -15,12 +22,21 @@ data class DrawingState(
     val paths: List<PathData> = emptyList(),
     val undoPaths: List<PathData> = emptyList(),
     val redoPaths: List<PathData> = emptyList(),
+    val vectorData: VectorData = VectorData(),
+    val countdownFinished: Boolean = false,
+    val timeLeft: Int = 3,
 )
 
 data class PathData(
     val id: String,
     val color: Color = Color.White,
     val path: List<Offset>
+)
+
+data class VectorData(
+    var paths: List<Path> = emptyList(),
+    var viewportWidth: Float = 0.0f,
+    var viewportHeight: Float = 0.0f,
 )
 
 sealed interface DrawingAction {
@@ -32,9 +48,20 @@ sealed interface DrawingAction {
     data object OnRedoButtonClick: DrawingAction
 }
 
-class DrawingViewModel : ViewModel() {
+class DrawingViewModel(
+    private val getRandomAssetUseCase: GetRandomAssetUseCase,
+) : ViewModel() {
     private val _state = MutableStateFlow(DrawingState())
     val state = _state.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val vectorData = getRandomAssetUseCase()
+            _state.update { it.copy(vectorData = vectorData) }
+
+            startCountdown()
+        }
+    }
 
     fun onAction(action: DrawingAction) {
         when (action) {
@@ -97,7 +124,6 @@ class DrawingViewModel : ViewModel() {
         _state.update { it.copy(
             currentPath = PathData(
                 id = System.currentTimeMillis().toString(),
-                color = it.selectedColor,
                 path = emptyList()
             )
         ) }
@@ -121,6 +147,18 @@ class DrawingViewModel : ViewModel() {
                 undoPaths = emptyList(),
                 redoPaths = emptyList()
             )
+        }
+    }
+
+    private fun startCountdown() {
+        viewModelScope.launch {
+            for (i in state.value.timeLeft downTo 1) {
+                _state.update { it.copy(timeLeft = i) }
+                delay(1000L)
+            }
+            _state.update {
+                it.copy(countdownFinished = true)
+            }
         }
     }
 }

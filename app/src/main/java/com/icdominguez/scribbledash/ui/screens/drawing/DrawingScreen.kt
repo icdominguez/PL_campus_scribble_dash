@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -25,34 +24,30 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.icdominguez.scribbledash.R
 import com.icdominguez.scribbledash.ui.designsystem.composables.CloseButton
 import com.icdominguez.scribbledash.ui.designsystem.theme.LocalScribbleDashColorsPalette
 import com.icdominguez.scribbledash.ui.designsystem.theme.LocalScribbleDashTypography
 import kotlin.math.abs
+import kotlin.math.min
 
 @Composable
 fun DrawingScreen(
-    modifier: Modifier = Modifier,
+    state: DrawingState = DrawingState(),
     navigateBack: () -> Unit = {},
+    uiEvent: (DrawingAction) -> Unit = {},
 ) {
-    val viewModel = viewModel<DrawingViewModel>()
-
-    val state by viewModel.state.collectAsStateWithLifecycle()
-
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize(),
     ) {
-
         CloseButton(onClick = navigateBack)
 
         Column(
@@ -61,7 +56,7 @@ fun DrawingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = stringResource(R.string.start_drawing),
+                text = if(state.countdownFinished) stringResource(R.string.start_drawing) else stringResource(R.string.ready),
                 style = LocalScribbleDashTypography.current.displayMedium.copy(
                     color = LocalScribbleDashColorsPalette.current.onBackground,
                 )
@@ -69,30 +64,57 @@ fun DrawingScreen(
             DrawingCanvas(
                 paths = state.paths,
                 currentPath = state.currentPath,
-                onAction = viewModel::onAction,
+                onAction = uiEvent,
                 modifier = Modifier.fillMaxWidth(),
+                vectorData = state.vectorData,
+                countDownFinished = state.countdownFinished,
+            )
+            Text(
+                text = if(state.countdownFinished) stringResource(R.string.your_drawing) else stringResource(R.string.example),
+                style = LocalScribbleDashTypography.current.labelSmall.copy(
+                    color = LocalScribbleDashColorsPalette.current.onSurface,
+                )
             )
         }
 
-        CanvasControls(
-            modifier = Modifier
-                .align(Alignment.BottomCenter),
-            isClearCanvasButtonEnabled = state.paths.isNotEmpty(),
-            onClearCanvas = {
-                viewModel.onAction(DrawingAction.OnClearCanvasClick)
-            },
-            isUndoButtonEnabled = state.undoPaths.isNotEmpty(),
-            isRedoButtonEnabled = state.redoPaths.isNotEmpty(),
-            onUndoButtonClick = { viewModel.onAction(DrawingAction.OnUndoButtonClick) },
-            onRedoButtonClick = { viewModel.onAction(DrawingAction.OnRedoButtonClick) },
-        )
+        if(state.countdownFinished) {
+            CanvasControls(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(
+                        horizontal = 30.dp,
+                    ),
+                isClearCanvasButtonEnabled = state.paths.isNotEmpty(),
+                onClearCanvas = {
+                    uiEvent(DrawingAction.OnClearCanvasClick)
+                },
+                isUndoButtonEnabled = state.undoPaths.isNotEmpty(),
+                isRedoButtonEnabled = state.redoPaths.isNotEmpty(),
+                onUndoButtonClick = {
+                    uiEvent(DrawingAction.OnUndoButtonClick)
+                },
+                onRedoButtonClick = {
+                    uiEvent(DrawingAction.OnRedoButtonClick)
+                }
+            )
+        } else {
+            Text(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 40.dp),
+                text = stringResource(R.string.countdown, state.timeLeft),
+                style = LocalScribbleDashTypography.current.headlineMedium.copy(
+                    color = LocalScribbleDashColorsPalette.current.onBackground,
+                )
+            )
+        }
     }
 }
 
 @Preview
 @Composable
 private fun DrawingScreenPreview() {
-    DrawingScreen()
+    DrawingScreen(uiEvent = { })
 }
 
 @Composable
@@ -100,6 +122,8 @@ fun ColumnScope.DrawingCanvas(
     modifier: Modifier = Modifier,
     paths: List<PathData>,
     currentPath: PathData?,
+    vectorData: VectorData,
+    countDownFinished: Boolean = false,
     onAction: (DrawingAction) -> Unit,
 ) {
     val linesColor = LocalScribbleDashColorsPalette.current.onSurfaceVariant
@@ -155,20 +179,57 @@ fun ColumnScope.DrawingCanvas(
                         )
                     }
             ) {
-                drawGridLines(linesColor, 1.dp)
 
-                paths.fastForEach { pathData ->
-                    drawPath(
-                        path = pathData.path,
-                        color = pathData.color,
-                    )
+                if(countDownFinished) {
+                    drawGridLines(linesColor, 1.dp)
+
+                    paths.fastForEach { pathData ->
+                        drawPath(
+                            path = pathData.path,
+                            color = Color.Black,
+                        )
+                    }
+                    currentPath?.let {
+                        drawPath(
+                            path = it.path,
+                            color = Color.Black,
+                        )
+                    }
+                } else {
+                    drawVectorExample(vectorData)
                 }
-                currentPath?.let {
-                    drawPath(
-                        path = it.path,
-                        color = it.color,
-                    )
-                }
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawVectorExample(vectorData: VectorData) {
+    val canvasWidth = size.width
+    val canvasHeight = size.height
+
+    val scaleX = canvasWidth / vectorData.viewportWidth
+    val scaleY = canvasHeight / vectorData.viewportHeight
+
+    val scale = min(scaleX, scaleY)
+
+    val scaledWidth = vectorData.viewportWidth * scale
+    val scaledHeight = vectorData.viewportHeight * scale
+
+    val translateX = (canvasWidth - scaledWidth) / 2f
+    val translateY = (canvasHeight - scaledHeight) / 2f
+
+    withTransform({
+        translate(left = translateX, top = translateY)
+        scale(scaleX = scaleX, scaleY = scale, pivot = Offset.Zero)
+    }) {
+        vectorData.paths.forEach {
+            val bounds = it.getBounds()
+            if(!bounds.isEmpty) {
+                drawPath(
+                    path = it,
+                    color = Color.Black,
+                    style = Stroke(width = 1f)
+                )
             }
         }
     }

@@ -27,7 +27,7 @@ fun ScribbleDashBottomNavigationBar(
     val navigationItems = listOf(
         NavigationItem(
             icon = R.drawable.chart,
-            route = Screen.LeftHand.route,
+            route = Screen.Statistics.route,
         ),
         NavigationItem(
             icon = R.drawable.home,
@@ -52,7 +52,7 @@ fun ScribbleDashBottomNavigationBar(
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = LocalScribbleDashColorsPalette.current.primary,
+                    selectedIconColor = if(navigationItem.route == Screen.Statistics.route) LocalScribbleDashColorsPalette.current.tertiaryContainer else LocalScribbleDashColorsPalette.current.primary,
                     unselectedIconColor = LocalScribbleDashColorsPalette.current.surfaceLowest,
                     indicatorColor = Color.Transparent,
                 )

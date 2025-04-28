@@ -20,10 +20,11 @@ import com.icdominguez.scribbledash.navigation.Screen
 import com.icdominguez.scribbledash.navigation.ScribbleDashBottomNavigationBar
 import com.icdominguez.scribbledash.ui.designsystem.theme.ScribbleDashTheme
 import com.icdominguez.scribbledash.ui.screens.drawing.DrawingScreen
-import com.icdominguez.scribbledash.ui.screens.lefthand.LeftHandScreen
+import com.icdominguez.scribbledash.ui.screens.statistics.Statistics
 import com.icdominguez.scribbledash.ui.screens.home.HomeScreen
 import com.icdominguez.scribbledash.ui.screens.home.HomeScreenViewModel
 import com.icdominguez.scribbledash.ui.screens.difficulty.SelectDifficultyScreen
+import com.icdominguez.scribbledash.ui.screens.drawing.DrawingViewModel
 import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
@@ -45,7 +46,8 @@ class MainActivity : ComponentActivity() {
                 val currentDestination = navBackStackEntry?.destination?.route
 
                 val showBottomBar = currentDestination in listOf(
-                    Screen.Home.route
+                    Screen.Home.route,
+                    Screen.Statistics.route,
                 )
 
                 Scaffold(
@@ -68,8 +70,8 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        composable(route = Screen.LeftHand.route) {
-                            LeftHandScreen()
+                        composable(route = Screen.Statistics.route) {
+                            Statistics()
                         }
                         composable(route = Screen.SelectDifficulty.route) {
                             SelectDifficultyScreen(
@@ -82,7 +84,10 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(route = Screen.Drawing.route) {
+                            val viewModel: DrawingViewModel = koinViewModel()
                             DrawingScreen(
+                                state = viewModel.state.collectAsStateWithLifecycle().value,
+                                uiEvent = viewModel::onAction,
                                 navigateBack = {
                                     navController.popBackStack()
                                 }
